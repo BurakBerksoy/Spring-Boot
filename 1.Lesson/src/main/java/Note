@@ -1,0 +1,2 @@
+Kodda çalışmayan methodlar var update, delete ve getById bu methodlar id'den kaynaklı çalışmadıklarını
+düşünüyorum postmanda 200 mesajını veriyor çalışıyor ama postmana göre çalışıyor spring kodunda hata var.

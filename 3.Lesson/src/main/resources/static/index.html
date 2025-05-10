@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Öğrenci İşlemleri</title>
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <style>
+        body {
+          padding: 20px;
+        }
+        h2 {
+          margin-top: 30px;
+          margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center">Öğrenci İşlemleri</h1>
+
+    <!-- Tüm Öğrencileri Listeleme -->
+    <section id="listSection">
+        <h2>Tüm Öğrenciler</h2>
+        <button class="btn btn-primary mb-3" onclick="fetchAllStudents()">
+            Listeyi Yenile
+        </button>
+        <table class="table table-bordered">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Ad Soyad</th>
+                <th>İşlemler</th>
+            </tr>
+            </thead>
+            <tbody id="studentTableBody">
+            <!-- JS ile doldurulacak -->
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ID ile Öğrenci Getirme -->
+    <section id="getByIdSection">
+        <h2>ID ile Öğrenci Getirme</h2>
+        <div class="mb-3">
+            <input
+                    type="number"
+                    id="searchId"
+                    class="form-control"
+                    placeholder="Öğrenci ID"
+            />
+        </div>
+        <button class="btn btn-info mb-3" onclick="fetchStudentById()">
+            Getir
+        </button>
+        <div id="studentDetail"></div>
+    </section>
+
+    <!-- Yeni Öğrenci Oluşturma -->
+    <section id="createSection">
+        <h2>Yeni Öğrenci Oluşturma</h2>
+        <div class="mb-3">
+            <input
+                    type="text"
+                    id="newFullName"
+                    class="form-control"
+                    placeholder="Ad Soyad"
+            />
+        </div>
+        <div class="mb-3">
+            <input
+                    type="password"
+                    id="newPassword"
+                    class="form-control"
+                    placeholder="Parola"
+            />
+        </div>
+        <button class="btn btn-success mb-3" onclick="createStudent()">
+            Oluştur
+        </button>
+    </section>
+
+    <!-- Öğrenci Güncelleme -->
+    <section id="updateSection">
+        <h2>Öğrenci Güncelleme</h2>
+        <div class="mb-3">
+            <input
+                    type="number"
+                    id="updateId"
+                    class="form-control"
+                    placeholder="Güncellenecek Öğrenci ID"
+            />
+        </div>
+        <div class="mb-3">
+            <input
+                    type="text"
+                    id="updateFullName"
+                    class="form-control"
+                    placeholder="Yeni Ad Soyad"
+            />
+        </div>
+        <div class="mb-3">
+            <input
+                    type="password"
+                    id="updatePassword"
+                    class="form-control"
+                    placeholder="Yeni Parola"
+            />
+        </div>
+        <button class="btn btn-warning mb-3" onclick="updateStudent()">
+            Güncelle
+        </button>
+    </section>
+</div>
+
+<!-- JavaScript -->
+<script>
+    const BASE_URL = "/api/student";
+
+    // Tüm öğrencileri getir ve tabloya yazdır
+    async function fetchAllStudents() {
+      try {
+        const response = await fetch(`${BASE_URL}/all`);
+        const data = await response.json();
+        console.log("Gelen tüm öğrenci verisi:", data);
+
+        // API yanıtı doğrudan dizi şeklinde ise:
+        let students = Array.isArray(data) ? data : data.data;
+        if (!Array.isArray(students)) {
+          console.error("Beklenen dizi formatında veri gelmiyor:", data);
+          document.getElementById("studentTableBody").innerHTML =
+            "<tr><td colspan='3'>Veri formatı hatalı</td></tr>";
+          return;
+        }
+
+        const tableBody = document.getElementById("studentTableBody");
+        tableBody.innerHTML = "";
+        students.forEach((student) => {
+          // API tarafından dönen property isimleri: id, fullName. Farklıysa güncelle!
+          tableBody.innerHTML += `
+            <tr>
+              <td>${student.id || student.studentId || "ID yok"}</td>
+              <td>${student.fullName || student.name || "Ad yok"}</td>
+              <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteStudent(${
+                  student.id || student.studentId
+                })">Sil</button>
+              </td>
+            </tr>
+          `;
+        });
+      } catch (error) {
+        console.error("Öğrencileri çekerken hata oluştu:", error);
+      }
+    }
+
+    // ID'ye göre öğrenci getir
+    async function fetchStudentById() {
+      const id = document.getElementById("searchId").value;
+      if (!id) {
+        alert("Lütfen bir ID giriniz.");
+        return;
+      }
+      try {
+        const response = await fetch(`${BASE_URL}/${id}`);
+        if (!response.ok) {
+          throw new Error("Öğrenci bulunamadı!");
+        }
+        const student = await response.json();
+        console.log("Tek öğrenci verisi:", student);
+        // API'deki property isimleri id, fullName; farklıysa düzenle:
+        document.getElementById("studentDetail").innerHTML = `
+          <div class="alert alert-info">
+            <strong>ID:</strong> ${student.id || student.studentId || "Bilinmiyor"} <br>
+            <strong>Ad Soyad:</strong> ${student.fullName || student.name || "Bilinmiyor"}
+          </div>
+        `;
+      } catch (error) {
+        console.error("Öğrenci getirilirken hata oluştu:", error);
+        document.getElementById("studentDetail").innerHTML = `
+          <div class="alert alert-danger">${error.message}</div>
+        `;
+      }
+    }
+
+    // Yeni öğrenci oluştur
+    async function createStudent() {
+      const fullName = document.getElementById("newFullName").value;
+      const password = document.getElementById("newPassword").value;
+      if (!fullName || !password) {
+        alert("Lütfen tüm alanları doldurun.");
+        return;
+      }
+      const newStudent = {
+        fullName,
+        password,
+      };
+      try {
+        const response = await fetch(`${BASE_URL}/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newStudent),
+        });
+        if (!response.ok) {
+          throw new Error("Öğrenci oluşturulamadı!");
+        }
+        const createdStudent = await response.json();
+        alert(`Öğrenci oluşturuldu. ID: ${createdStudent.id || createdStudent.studentId}`);
+        // Listeyi güncelle
+        fetchAllStudents();
+      } catch (error) {
+        console.error("Öğrenci oluşturulurken hata oluştu:", error);
+      }
+    }
+
+    // Öğrenci güncelle
+    async function updateStudent() {
+      const id = document.getElementById("updateId").value;
+      const fullName = document.getElementById("updateFullName").value;
+      const password = document.getElementById("updatePassword").value;
+      if (!id || !fullName || !password) {
+        alert("Lütfen tüm alanları doldurun.");
+        return;
+      }
+      const updateData = {
+        fullName,
+        password,
+      };
+      try {
+        const response = await fetch(`${BASE_URL}/update/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
+        });
+        if (!response.ok) {
+          throw new Error("Öğrenci güncellenemedi!");
+        }
+        const updatedStudent = await response.json();
+        alert(`Öğrenci güncellendi. ID: ${updatedStudent.id || updatedStudent.studentId}`);
+        // Listeyi güncelle
+        fetchAllStudents();
+      } catch (error) {
+        console.error("Öğrenci güncellenirken hata oluştu:", error);
+      }
+    }
+
+    // Öğrenci silme
+    async function deleteStudent(id) {
+      if (!confirm(`ID ${id} numaralı öğrenciyi silmek istediğinize emin misiniz?`)) {
+        return;
+      }
+      try {
+        const response = await fetch(`${BASE_URL}/delete/${id}`, {
+          method: "DELETE",
+        });
+        if (response.ok) {
+          alert("Öğrenci silindi.");
+          fetchAllStudents();
+        } else {
+          throw new Error("Öğrenci silinemedi!");
+        }
+      } catch (error) {
+        console.error("Öğrenci silinirken hata oluştu:", error);
+      }
+    }
+
+    // Sayfa yüklendiğinde tüm öğrencileri getir
+    window.onload = fetchAllStudents;
+</script>
+</body>
+</html>
